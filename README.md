@@ -12,7 +12,7 @@ Este projeto demonstra o **uso do PWM no Raspberry Pi Pico W** para controlar **
 
 ## 🛠️ Componentes Utilizados
 - **Microcontrolador:** Raspberry Pi Pico W  
-- **LED RGB (Azul e Vermelho)** – GPIOs **12 e 13**  
+- **LED RGB (Verde, Azul e Vermelho)** – GPIOs **11, 12 e 13**  
 - **Joystick analógico** – GPIOs **26 e 27**  
 - **Botão A** – GPIO **5**  
 - **Botão do Joystick** – GPIO **22**  
@@ -44,6 +44,7 @@ Este projeto demonstra o **uso do PWM no Raspberry Pi Pico W** para controlar **
 
 | Componente | GPIO |
 |------------|------|
+| LED Verde | 11 |
 | LED Azul | 12 |
 | LED Vermelho | 13 |
 | Joystick X | 26 |
@@ -63,4 +64,4 @@ Para validar o comportamento do sistema, foram realizados experimentos utilizand
 3. **A borda do display alterna corretamente** entre os estilos ao pressionar o botão do joystick.  
 
 ## 📸 Demonstração do Projeto
-📹 **[Assista ao vídeo demonstrativo]()**  
+📹 **[Assista ao vídeo demonstrativo](https://drive.google.com/file/d/1WAVL-4zYL3jSMOv-eAbYWNc72i3YzBPj)**  
