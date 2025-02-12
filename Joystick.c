@@ -3,6 +3,8 @@
 #include "hardware/adc.h"
 #include "hardware/i2c.h"
 #include "hardware/pwm.h"
+#include "lib/ssd1306.h"
+#include "lib/font.h"
 
 // Definindo os pinos do LED RGB
 #define LED_GREEN 11
