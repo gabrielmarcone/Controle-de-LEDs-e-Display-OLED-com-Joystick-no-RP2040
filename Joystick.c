@@ -25,6 +25,12 @@ volatile bool state_red_led = false;
 volatile uint32_t last_press_time_A = 0;
 volatile uint32_t last_press_time_J = 0;
 
+// Variáveis para a comunicação I2C
+#define I2C_PORT i2c1
+#define I2C_SDA 14
+#define I2C_SCL 15
+#define SSD1306_ADDR 0x3C
+
 // Função para configurar os pinos GPIO
 void config_gpio() {
     // Inicializando e configurando LEDs como saída
@@ -67,6 +73,24 @@ void button_irq_handler(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all();
     config_gpio();
+
+    // I2C Initialisation. Using it at 400Khz.
+    i2c_init(I2C_PORT, 400 * 1000);
+
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C); // Set the GPIO pin function to I2C
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C); // Set the GPIO pin function to I2C
+    gpio_pull_up(I2C_SDA); // Pull up the data line
+    gpio_pull_up(I2C_SCL); // Pull up the clock line
+
+    // Inicializa a estrutura do display
+    ssd1306_t ssd;
+    ssd1306_init(&ssd, WIDTH, HEIGHT, false, SSD1306_ADDR, I2C_PORT); // Inicializa o display
+    ssd1306_config(&ssd); // Configura o display
+    ssd1306_send_data(&ssd); // Envia os dados para o display
+
+    // Limpa o display. O display inicia com todos os pixels apagados.
+    ssd1306_fill(&ssd, false);
+    ssd1306_send_data(&ssd);
 
     // Configura as interrupções para os botões
     gpio_set_irq_enabled_with_callback(BUTTON_A, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler);
