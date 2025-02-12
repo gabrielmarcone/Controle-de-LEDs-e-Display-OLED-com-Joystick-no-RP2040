@@ -34,6 +34,7 @@ ssd1306_t ssd;
 
 // Estado da borda do display
 volatile bool state_border = false;
+volatile bool state_shape = false;  // Controla se o quadrado deve aparecer
 
 // Função para configurar os pinos GPIO
 void config_gpio() {
@@ -66,14 +67,38 @@ void draw_dashed_border(ssd1306_t *display) {
     }
 }
 
+// Atualiza a tela para manter a borda e o desenho do botão A
+void update_display() {
+    ssd1306_fill(&ssd, false); // Limpa o display
+
+    // Se a borda estiver ativada, desenha a borda
+    if (state_border) {
+        ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
+    } else {
+        draw_dashed_border(&ssd);
+    }
+
+    // Se o botão A ativou o desenho, desenha o retângulo
+    if (state_shape) {
+        ssd1306_rect(&ssd, 28, 60, 8, 8, true, true);
+    }
+
+    // Atualiza o display
+    ssd1306_send_data(&ssd);
+}
+
 // Callback para interrupções dos botões
 void button_irq_handler(uint gpio, uint32_t events) {
     uint32_t current_time = to_us_since_boot(get_absolute_time());
 
     if (gpio == BUTTON_A) { // Aciona os LEDs Vermelho e azul por PWM
         if (current_time - last_press_time_A > DEBOUNCE_TIME * 1000) { // Debounce
+            printf("Botão A pressionado: PWM ativado");
             last_press_time_A = current_time;  // Atualiza o tempo da última pressão
             // Lógica para a alteração por PWM
+
+            state_shape = !state_shape;  // Alterna o estado do quadrado
+            update_display();  // Atualiza o display
         }
     } 
     else if (gpio == BUTTON_JOYSTICK) { // Liga/Desliga o LED Verde e controla a borda do display
@@ -83,17 +108,9 @@ void button_irq_handler(uint gpio, uint32_t events) {
             gpio_put(LED_GREEN, state_green_led);
             printf("Botão Joystick pressionado. LED Verde: %d\n", state_green_led);
 
-            // Alterna o estado da borda
+            // Alterna a borda
             state_border = !state_border;
-
-            // Atualiza o display
-            ssd1306_fill(&ssd, false); // Limpa o display
-            if (state_border) {
-                ssd1306_rect(&ssd, 0, 0, 127, 63, true, false); // Desenha um retângulo na borda do display
-            } else {
-                draw_dashed_border(&ssd); // Faz uma linha tracejada
-            }
-            ssd1306_send_data(&ssd); // Envia a atualização para o display
+            update_display();  // Atualiza o display mantendo tudo visível
         }
     }
 }
