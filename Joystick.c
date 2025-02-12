@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/i2c.h"
@@ -44,6 +45,13 @@ volatile bool pwm_enabled = false; // Estado do PWM (se ativado ou não)
 // Estado da borda do display
 volatile bool state_border = false;
 volatile bool state_shape = false;  // Controla se o quadrado deve aparecer
+
+// Posição do quadrado no display (inicialmente centralizado)
+volatile int square_x = 60;
+volatile int square_y = 28;
+#define SQUARE_SIZE 8  // Tamanho do quadrado
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
 
 // Função para configurar os pinos GPIO
 void config_gpio() {
@@ -105,11 +113,11 @@ void set_led_intensity(uint16_t joystick_x, uint16_t joystick_y) {
 
 // Função para desenhar borda tracejada
 void draw_dashed_border(ssd1306_t *display) {
-    for (int i = 0; i < 128; i += 5) {
+    for (int i = 0; i < 128; i += 4) {
         ssd1306_pixel(display, i, 0, true);     // Linha superior
-        ssd1306_pixel(display, i, 63, true);    // Linha inferior
+        ssd1306_pixel(display, i, 61, true);    // Linha inferior
     }
-    for (int i = 0; i < 64; i += 5) {
+    for (int i = 0; i < 64; i += 4) {
         ssd1306_pixel(display, 0, i, true);     // Linha esquerda
         ssd1306_pixel(display, 127, i, true);   // Linha direita
     }
@@ -121,14 +129,14 @@ void update_display() {
 
     // Se a borda estiver ativada, desenha a borda
     if (state_border) {
-        ssd1306_rect(&ssd, 0, 0, 127, 63, true, false);
+        ssd1306_rect(&ssd, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, true, false);
     } else {
         draw_dashed_border(&ssd);
     }
 
     // Se o botão A ativou o desenho, desenha o retângulo
     if (state_shape) {
-        ssd1306_rect(&ssd, 28, 60, 8, 8, true, true);
+        ssd1306_rect(&ssd, square_y, square_x, SQUARE_SIZE, SQUARE_SIZE, true, true);
     }
 
     // Atualiza o display
@@ -159,7 +167,7 @@ void button_irq_handler(uint gpio, uint32_t events) {
 
             // Alterna a borda
             state_border = !state_border;
-            update_display();  // Atualiza o display mantendo tudo visível
+            update_display();
         }
     }
 }
@@ -189,8 +197,7 @@ int main() {
     gpio_set_irq_enabled_with_callback(BUTTON_A, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler);
     gpio_set_irq_enabled_with_callback(BUTTON_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler);
 
-    uint16_t joystick_x_position;
-    uint16_t joystick_y_position; 
+    uint16_t joystick_x_position, joystick_y_position; 
 
     while (true) {
         adc_select_input(1); // Seleciona o ADC para eixo X. O pino 26 como entrada analógica
@@ -199,6 +206,12 @@ int main() {
         joystick_y_position = adc_read(); 
 
         set_led_intensity(joystick_x_position, joystick_y_position);
+
+        if (state_shape) {
+            square_x = (joystick_x_position * (SCREEN_WIDTH - SQUARE_SIZE)) / 4095;
+            square_y = ((4095 - joystick_y_position) * (SCREEN_HEIGHT - SQUARE_SIZE)) / 4095;
+            update_display();
+        }
         printf("Joystick X: %d, Joystick Y: %d\n", joystick_x_position, joystick_y_position);
 
         float porcentagemX = (joystick_x_position/4096.0)*100;
@@ -206,6 +219,6 @@ int main() {
 
         printf("Nível do LED Verm. : %.2f, Nível do LED Azul: %.2f\n", porcentagemX, porcentagemY);
 
-        sleep_ms(200);
+        sleep_ms(50);
     }
 }
