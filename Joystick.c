@@ -15,6 +15,10 @@
 #define BUTTON_A 5
 #define BUTTON_JOYSTICK 22
 
+// Variáveis para leitura da diração do Joystick
+#define JOYSTICK_X_PIN 26  // GPIO para eixo X
+#define JOYSTICK_Y_PIN 27  // GPIO para eixo Y
+
 // Debounce time
 #define DEBOUNCE_TIME 200  // 200 ms
 
@@ -31,6 +35,11 @@ volatile uint32_t last_press_time_J = 0;
 #define I2C_SCL 15
 #define SSD1306_ADDR 0x3C
 ssd1306_t ssd;
+
+// Variáveis para controle de PWM
+#define PWM_DIVISER 150.0 // Divisor de clock para PWM
+#define WRAP_VALUE 4096 // WRAP para o Joystick
+volatile bool pwm_enabled = false; // Estado do PWM (se ativado ou não)
 
 // Estado da borda do display
 volatile bool state_border = false;
@@ -53,6 +62,45 @@ void config_gpio() {
     gpio_set_dir(BUTTON_JOYSTICK, GPIO_IN);
     gpio_pull_up(BUTTON_A);
     gpio_pull_up(BUTTON_JOYSTICK);
+
+    // Inicializa as funções ADC
+    adc_init();
+    adc_gpio_init(JOYSTICK_X_PIN);
+    adc_gpio_init(JOYSTICK_Y_PIN); 
+}
+
+// Função para configurar o módulo PWM
+void pwm_setup() {
+    // Configura o PWM para o LED Azul
+    gpio_set_function(LED_BLUE, GPIO_FUNC_PWM);
+    uint slice_led_blue = pwm_gpio_to_slice_num(LED_BLUE);
+    pwm_set_clkdiv(slice_led_blue, PWM_DIVISER);
+    pwm_set_wrap(slice_led_blue, WRAP_VALUE);
+    pwm_set_enabled(slice_led_blue, true);
+
+    // Configura o PWM para o LED Vermelho
+    gpio_set_function(LED_RED, GPIO_FUNC_PWM);
+    uint slice_led_red = pwm_gpio_to_slice_num(LED_RED);
+    pwm_set_clkdiv(slice_led_red, PWM_DIVISER);
+    pwm_set_wrap(slice_led_red, WRAP_VALUE);
+    pwm_set_enabled(slice_led_red, true);
+}
+
+// Função para definir brilho dos LEDs com base no Joystick (somente se o PWM estiver ativado)
+void set_led_intensity(uint16_t joystick_x, uint16_t joystick_y) {
+    if (pwm_enabled) {
+        // Calcula a intensidade dos LEDs baseada na posição do joystick
+        uint16_t intensity_x = abs(joystick_x - 2048) * 2;  // X controla LED Vermelho
+        uint16_t intensity_y = abs(joystick_y - 2048) * 2;  // Y controla LED Azul
+
+        // Define o nível de PWM para os LEDs
+        pwm_set_gpio_level(LED_BLUE, intensity_y);
+        pwm_set_gpio_level(LED_RED, intensity_x);
+    } else {
+        // Se o PWM estiver desativado, mantém os LEDs apagados
+        pwm_set_gpio_level(LED_BLUE, 0);
+        pwm_set_gpio_level(LED_RED, 0);
+    }
 }
 
 // Função para desenhar borda tracejada
@@ -93,10 +141,10 @@ void button_irq_handler(uint gpio, uint32_t events) {
 
     if (gpio == BUTTON_A) { // Aciona os LEDs Vermelho e azul por PWM
         if (current_time - last_press_time_A > DEBOUNCE_TIME * 1000) { // Debounce
-            printf("Botão A pressionado: PWM ativado");
             last_press_time_A = current_time;  // Atualiza o tempo da última pressão
-            // Lógica para a alteração por PWM
 
+            pwm_enabled = !pwm_enabled; // Alterna o estado do PWM
+            printf("Botão A pressionado. PWM Ativo: %d\n", pwm_enabled);
             state_shape = !state_shape;  // Alterna o estado do quadrado
             update_display();  // Atualiza o display
         }
@@ -104,6 +152,7 @@ void button_irq_handler(uint gpio, uint32_t events) {
     else if (gpio == BUTTON_JOYSTICK) { // Liga/Desliga o LED Verde e controla a borda do display
         if (current_time - last_press_time_J > DEBOUNCE_TIME * 1000) { // Debounce
             last_press_time_J = current_time;  // Atualiza o tempo da última pressão
+
             state_green_led = !state_green_led;  // Alterna o estado
             gpio_put(LED_GREEN, state_green_led);
             printf("Botão Joystick pressionado. LED Verde: %d\n", state_green_led);
@@ -118,6 +167,7 @@ void button_irq_handler(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all();
     config_gpio();
+    pwm_setup();
 
     // Inicialização do I2C
     i2c_init(I2C_PORT, 400 * 1000);
@@ -139,6 +189,23 @@ int main() {
     gpio_set_irq_enabled_with_callback(BUTTON_A, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler);
     gpio_set_irq_enabled_with_callback(BUTTON_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler);
 
+    uint16_t joystick_x_position;
+    uint16_t joystick_y_position; 
+
     while (true) {
+        adc_select_input(1); // Seleciona o ADC para eixo X. O pino 26 como entrada analógica
+        joystick_x_position = adc_read();
+        adc_select_input(0); // Seleciona o ADC para eixo Y. O pino 27 como entrada analógica
+        joystick_y_position = adc_read(); 
+
+        set_led_intensity(joystick_x_position, joystick_y_position);
+        printf("Joystick X: %d, Joystick Y: %d\n", joystick_x_position, joystick_y_position);
+
+        float porcentagemX = (joystick_x_position/4096.0)*100;
+        float porcentagemY = (joystick_y_position/4096.0)*100;
+
+        printf("Nível do LED Verm. : %.2f, Nível do LED Azul: %.2f\n", porcentagemX, porcentagemY);
+
+        sleep_ms(200);
     }
 }
