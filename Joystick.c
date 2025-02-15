@@ -200,12 +200,12 @@ int main() {
     gpio_set_irq_enabled_with_callback(BUTTON_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler); 
 
     while (true) {
-        adc_select_input(1); // Seleciona o ADC para eixo X. O pino 26 como entrada analógica
+        adc_select_input(0); // Seleciona o ADC para eixo X. O pino 26 como entrada analógica
         sleep_us(2);
-        joystick_x_position = adc_read();
-        adc_select_input(0); // Seleciona o ADC para eixo Y. O pino 27 como entrada analógica
+        joystick_y_position = adc_read();
+        adc_select_input(1); // Seleciona o ADC para eixo Y. O pino 27 como entrada analógica
         sleep_us(2);
-        joystick_y_position = adc_read(); 
+        joystick_x_position = adc_read(); 
 
         set_led_intensity(joystick_x_position, joystick_y_position);
 
