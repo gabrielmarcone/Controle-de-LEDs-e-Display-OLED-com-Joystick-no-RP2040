@@ -17,8 +17,8 @@
 #define BUTTON_JOYSTICK 22
 
 // Variáveis para leitura da diração do Joystick
-#define JOYSTICK_X_PIN 26  // GPIO para eixo X
-#define JOYSTICK_Y_PIN 27  // GPIO para eixo Y
+#define JOYSTICK_X_PIN 26  // GPIO para eixo Y
+#define JOYSTICK_Y_PIN 27  // GPIO para eixo X
 
 // Debounce time
 #define DEBOUNCE_TIME 200  // 200 ms
@@ -200,10 +200,10 @@ int main() {
     gpio_set_irq_enabled_with_callback(BUTTON_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &button_irq_handler); 
 
     while (true) {
-        adc_select_input(0); // Seleciona o ADC para eixo X. O pino 26 como entrada analógica
+        adc_select_input(0); // Seleciona o ADC para eixo Y. O pino 26 como entrada analógica
         sleep_us(2);
         joystick_y_position = adc_read();
-        adc_select_input(1); // Seleciona o ADC para eixo Y. O pino 27 como entrada analógica
+        adc_select_input(1); // Seleciona o ADC para eixo X. O pino 27 como entrada analógica
         sleep_us(2);
         joystick_x_position = adc_read(); 
 
